@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DexTokenomics Test Dashboard</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; line-height: 1.6; }
+        .container { max-width: 800px; margin: auto; }
+        .card { border: 1px solid #ccc; padding: 15px; margin-bottom: 10px; border-radius: 5px; }
+        .error { color: red; }
+        .success { color: green; }
+        input { padding: 8px; width: 300px; }
+        button { padding: 8px 15px; cursor: pointer; }
+        #data-display { white-space: pre-wrap; background: #f4f4f4; padding: 10px; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DexTokenomics Test Dashboard</h1>
+        <p>Enter a Solana token address to monitor its data.</p>
+        
+        <div>
+            <input type="text" id="token-address" placeholder="e.g. EPjFW3F24v1666uY7S91B7T5A9pBvY8R3K9vC6T7v7v7" value="">
+            <button onclick="startMonitoring()">Start Monitoring</button>
+        </div>
+
+        <div id="status-message" style="margin-top: 10px;"></div>
+
+        <div id="data-container" style="display:none;">
+            <h2>Live Data</h2>
+            <div class="card">
+                <p><strong>Symbol:</strong> <span id="val-symbol">-</span></p>
+                <p><strong>Name:</strong> <span id="val-name">-</span></p>
+                <p><strong>Price (USD):</strong> $<span id="val-price">-</span></p>
+                <p><strong>Market Cap:</strong> $<span id="val-mcap">-</span></p>
+                <p><strong>FDV:</strong> $<span id="val-fdv">-</span></p>
+                <p><strong>24h Volume:</strong> $<span id="val-vol">-</span></p>
+                <p><strong>Liquidity:</strong> $<span id="val-liq">-</span></p>
+            </div>
+
+            <h3>Raw JSON Output</h3>
+            <div id="data-display">No data fetched yet.</div>
+        </div>
+    </div>
+
+    <script>
+        let monitorInterval = null;
+
+        async function fetchData() {
+            const address = document.getElementById('token-address').value.trim();
+            const statusMsg = document.getElementById('status-message');
+            const dataContainer = document.getElementById('data-container');
+            const dataDisplay = document.getElementById('data-display');
+
+            if (!address) {
+                statusMsg.innerHTML = '<span class="error">Please enter an address.</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/token/${address}`);
+                const result = await response.json();
+
+                if (result.success && result.data) {
+                    statusMsg.innerHTML = '<span class="success">Data updated!</span>';
+                    dataContainer.style.display = 'block';
+                    
+                    const d = result.data;
+                    document.getElementById('val-symbol').innerText = d.symbol;
+                    document.getElementById('val-name').innerText = d.name;
+                    document.getElementById('val-price').innerText = d.price_usd.toLocaleString();
+                    document.getElementById('val-mcap').innerText = d.market_cap ? d.market_cap.toLocaleString() : 'N/A';
+                    document.getElementById('val-fdv').innerText = d.fdv ? d.fdv.toLocaleString() : 'N/A';
+                    document.getElementById('val-vol').innerText = d.volume_24h ? d.volume_24h.toLocaleString() : 'N/A';
+                    document.getElementById('val-liq').innerText = d.liquidity_usd ? d.liquidity_usd.toLocaleString() : 'N/A';
+                    
+                    dataDisplay.innerText = JSON.stringify(result, null, 2);
+                } else {
+                    statusMsg.innerHTML = '<span class="error">No Solana data found for this address.</span>';
+                    dataContainer.style.display = 'none';
+                }
+            } catch (err) {
+                statusMsg.innerHTML = '<span class="error">Error fetching data.</span>';
+                console.error(err);
+            }
+        }
+
+        function startMonitoring() {
+            // Clear any existing interval
+            if (monitorInterval) clearInterval(monitorInterval);
+            
+            // Immediate fetch
+            fetchData();
+            
+            // Set up interval (every 10 seconds)
+            monitorInterval = setInterval(fetchData, 10000);
+            document.getElementById('status-message').innerText = 'Monitoring started (10s interval)...';
+        }
+    </script>
+</body>
+</html>
